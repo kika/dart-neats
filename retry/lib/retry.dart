@@ -73,8 +73,11 @@ class RetryOptions {
   /// Maximum delay between retries, defaults to 30 seconds.
   final Duration maxDelay;
 
-  /// Maximum number of attempts before giving up, defaults to 8.
-  final int maxAttempts;
+  /// Maximum number of attempts before giving up, defaults to 8. null means infinite
+  final int? maxAttempts;
+
+  /// After how many attempts stop increasing the delay, default null, no limit
+  final int? attemptsFlatout;
 
   /// Create a set of [RetryOptions].
   ///
@@ -92,6 +95,7 @@ class RetryOptions {
     this.randomizationFactor = 0.25,
     this.maxDelay = const Duration(seconds: 30),
     this.maxAttempts = 8,
+    this.attemptsFlatout,
   });
 
   /// Delay after [attempt] number of attempts.
@@ -103,8 +107,12 @@ class RetryOptions {
     if (attempt <= 0) {
       return Duration.zero;
     }
+    var _attempt = attempt;
+    if(attemptsFlatout != 0 && _attempt >= attemptsFlatout!) {
+      _attempt = attemptsFlatout!;
+    }
     final rf = (randomizationFactor * (_rand.nextDouble() * 2 - 1) + 1);
-    final exp = math.min(attempt, 31); // prevent overflows.
+    final exp = math.min(_attempt, 31); // prevent overflows.
     final delay = (delayFactor * math.pow(2.0, exp) * rf);
     return delay < maxDelay ? delay : maxDelay;
   }
@@ -130,7 +138,7 @@ class RetryOptions {
       try {
         return await fn();
       } on Exception catch (e) {
-        if (attempt >= maxAttempts ||
+        if ((maxAttempts != null && attempt >= maxAttempts!) ||
             (retryIf != null && !(await retryIf(e)))) {
           rethrow;
         }
@@ -176,7 +184,8 @@ Future<T> retry<T>(
   Duration delayFactor = const Duration(milliseconds: 200),
   double randomizationFactor = 0.25,
   Duration maxDelay = const Duration(seconds: 30),
-  int maxAttempts = 8,
+  int? maxAttempts = 8,
+  int? attemptsFlatout,
   FutureOr<bool> Function(Exception)? retryIf,
   FutureOr<void> Function(Exception)? onRetry,
 }) =>
@@ -185,4 +194,5 @@ Future<T> retry<T>(
       randomizationFactor: randomizationFactor,
       maxDelay: maxDelay,
       maxAttempts: maxAttempts,
+      attemptsFlatout: attemptsFlatout,
     ).retry(fn, retryIf: retryIf, onRetry: onRetry);
