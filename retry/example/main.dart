@@ -33,7 +33,7 @@ Future<void> main() async {
         return response.statusCode;
       },
       // Retry on SocketException or TimeoutException
-      retryIf: (e) => e is SocketException || e is TimeoutException,
+      retryIf: (e, _, __) => e is SocketException || e is TimeoutException,
     );
 
     // Print result from status code

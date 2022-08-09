@@ -62,7 +62,7 @@ void main() {
       final f = r.retry(() {
         count++;
         throw Exception('Retry will fail');
-      }, retryIf: (e) => false);
+      }, retryIf: (e, _, __) => false);
       await expectLater(f, throwsA(isException));
       expect(count, equals(1));
     });
@@ -76,7 +76,7 @@ void main() {
       final f = r.retry(() {
         count++;
         throw FormatException('Retry will fail');
-      }, retryIf: (e) => e is FormatException);
+      }, retryIf: (e, _, __) => e is FormatException);
       await expectLater(f, throwsA(isFormatException));
       expect(count, equals(5));
     });
@@ -93,7 +93,7 @@ void main() {
           throw FormatException('Retry will be okay');
         }
         return true;
-      }, retryIf: (e) => e is FormatException);
+      }, retryIf: (e, _, __) => e is FormatException);
       await expectLater(f, completion(isTrue));
       expect(count, equals(2));
     });
@@ -127,7 +127,7 @@ void main() {
           throw FormatException('Retry will be okay');
         }
         throw Exception('unhandled thing');
-      }, retryIf: (e) => e is FormatException);
+      }, retryIf: (e, _, __) => e is FormatException);
       await expectLater(f, throwsA(isException));
       expect(count, equals(2));
     });

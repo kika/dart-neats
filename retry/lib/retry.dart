@@ -108,7 +108,7 @@ class RetryOptions {
       return Duration.zero;
     }
     var _attempt = attempt;
-    if(attemptsFlatout != 0 && _attempt >= attemptsFlatout!) {
+    if(attemptsFlatout != null && _attempt >= attemptsFlatout!) {
       _attempt = attemptsFlatout!;
     }
     final rf = (randomizationFactor * (_rand.nextDouble() * 2 - 1) + 1);
@@ -128,27 +128,28 @@ class RetryOptions {
   /// as an [Exception].
   Future<T> retry<T>(
     FutureOr<T> Function() fn, {
-    FutureOr<bool> Function(Exception)? retryIf,
-    FutureOr<void> Function(Exception)? onRetry,
+    FutureOr<bool> Function(Exception, int, Duration)? retryIf,
+    FutureOr<void> Function(Exception, int, Duration)? onRetry,
   }) async {
     var attempt = 0;
     // ignore: literal_only_boolean_expressions
     while (true) {
       attempt++; // first invocation is the first attempt
+      Duration d = delay(attempt);
       try {
         return await fn();
       } on Exception catch (e) {
         if ((maxAttempts != null && attempt >= maxAttempts!) ||
-            (retryIf != null && !(await retryIf(e)))) {
+            (retryIf != null && !(await retryIf(e, attempt, d)))) {
           rethrow;
         }
         if (onRetry != null) {
-          await onRetry(e);
+          await onRetry(e, attempt, d);
         }
       }
 
       // Sleep for a delay
-      await Future.delayed(delay(attempt));
+      await Future.delayed(d);
     }
   }
 }
@@ -186,8 +187,8 @@ Future<T> retry<T>(
   Duration maxDelay = const Duration(seconds: 30),
   int? maxAttempts = 8,
   int? attemptsFlatout,
-  FutureOr<bool> Function(Exception)? retryIf,
-  FutureOr<void> Function(Exception)? onRetry,
+  FutureOr<bool> Function(Exception, int, Duration)? retryIf,
+  FutureOr<void> Function(Exception, int, Duration)? onRetry,
 }) =>
     RetryOptions(
       delayFactor: delayFactor,
